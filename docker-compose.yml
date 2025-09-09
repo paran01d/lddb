@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  lddb:
+    build: .
+    image: lddb:latest
+    container_name: lddb-app
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+      - "8091:8081" 
+      - "8092:8082"
+      - "8093:8083"
+      - "8094:8084"
+    volumes:
+      # Persist database outside container
+      - lddb_data:/app/data
+      # Mount database file to data directory
+      - ./collection.db:/app/collection.db
+    environment:
+      - GIN_MODE=release
+      - TZ=UTC
+    networks:
+      - lddb-network
+    labels:
+      - "com.docker.compose.project=lddb"
+      - "description=LaserDisc Collection Manager"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/collection"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  lddb_data:
+    driver: local
+    labels:
+      - "description=LDDB SQLite database storage"
+
+networks:
+  lddb-network:
+    driver: bridge
+    labels:
+      - "description=LDDB application network"

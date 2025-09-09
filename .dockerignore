@@ -1,0 +1,60 @@
+# Git and version control
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+*.test
+*.out
+
+# Database files (will be mounted as volume)
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+
+# Temporary and test files
+/tmp/
+temp/
+*_test.go
+test_*.go
+debug_*.go
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Development scripts
+*.sh
