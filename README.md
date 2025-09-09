@@ -71,6 +71,36 @@ docker compose up -d --build
 - Safely stops/starts application during restore
 - Confirms restoration success
 
+### Google Drive Cloud Backup
+
+**Setup (One-time):**
+```bash
+# Install gdrive CLI
+wget -O gdrive.tar.gz 'https://github.com/glotlabs/gdrive/releases/latest/download/gdrive_linux-x64.tar.gz'
+tar -xzf gdrive.tar.gz
+sudo mv gdrive /usr/local/bin/
+chmod +x /usr/local/bin/gdrive
+
+# Authenticate with your Google account
+gdrive account add
+```
+
+**Cloud Backup:**
+```bash
+./gdrive-backup.sh
+```
+- Creates local backup then uploads to Google Drive
+- Stores in "LDDB_Backups" folder
+- Shows upload confirmation and file ID
+
+**Cloud Restore:**
+```bash
+./gdrive-restore.sh <google_drive_file_id>
+```
+- Lists available cloud backups
+- Downloads and restores specified backup
+- Complete cloud-to-local restoration workflow
+
 ### SSL Configuration
 
 **For Local Network Access:**
