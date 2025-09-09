@@ -26,8 +26,8 @@ A web-based LaserDisc collection management application with barcode scanning, a
 
 1. Clone the repository
 2. Start with Docker Compose: `docker-compose up -d`
-3. Open http://localhost:8090 in your browser
-4. Start scanning LaserDisc barcodes!
+3. Access securely at **https://cooee.mankies.com** (or http://localhost:8090 for local testing)
+4. Start scanning LaserDisc barcodes with secure camera access!
 
 ### Manual Installation
 
@@ -51,6 +51,25 @@ docker-compose logs -f
 # Rebuild after changes
 docker-compose up -d --build
 ```
+
+### SSL Configuration
+
+**For Local Network Access:**
+1. Add to your `/etc/hosts` file: `127.0.0.1 grave.local`  
+2. Access at **https://grave.local** with automatic Let's Encrypt SSL
+3. Camera access will work securely on mobile devices
+
+**For Production Deployment:**
+1. Point your domain DNS A record to your server's public IP
+2. Update `Caddyfile` with your domain name
+3. Caddy automatically handles Let's Encrypt certificates
+4. HTTPS enforced for secure camera API access
+
+**Why HTTPS is Important:**
+- Modern browsers require HTTPS for camera/microphone access
+- Mobile devices need secure context for barcode scanning
+- Let's Encrypt provides free, automatic SSL certificates
+- Enhanced security for your LaserDisc collection data
 
 ## Development
 

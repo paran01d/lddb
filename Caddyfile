@@ -1,0 +1,92 @@
+# LDDB LaserDisc Collection Manager - Caddy Configuration
+# ======================================================
+
+# Production HTTPS configuration for cooee.mankies.com
+cooee.mankies.com {
+    reverse_proxy lddb:8080
+    
+    # Automatic HTTPS with Let's Encrypt
+    tls paran01d@gmail.com
+    
+    # Enable compression
+    encode gzip
+    
+    # Security headers for HTTPS
+    header {
+        # Enable HSTS
+        Strict-Transport-Security max-age=31536000; includeSubDomains; preload
+        # Prevent content type sniffing
+        X-Content-Type-Options nosniff
+        # Prevent clickjacking
+        X-Frame-Options DENY
+        # Enable XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Secure referrer policy
+        Referrer-Policy strict-origin-when-cross-origin
+        # Content Security Policy for camera access
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; media-src 'self' blob:; camera 'self';"
+        # Permissions policy for camera access
+        Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+    }
+    
+    # Logging
+    log {
+        output file /data/access.log
+        format json
+    }
+}
+
+# HTTP fallback for testing (redirects to HTTPS)
+http://cooee.mankies.com {
+    redir https://cooee.mankies.com{uri}
+}
+
+# Local development fallback (HTTP only)
+:8090 {
+    reverse_proxy lddb:8080
+    encode gzip
+}
+
+# For production with domain (uncomment and configure with your domain)
+# your-domain.com {
+#     reverse_proxy lddb:8080
+#     
+#     # Automatic HTTPS with Let's Encrypt
+#     tls {
+#         email your-email@example.com
+#     }
+#     
+#     # Security headers
+#     header {
+#         Strict-Transport-Security max-age=31536000; includeSubDomains; preload
+#         X-Content-Type-Options nosniff
+#         X-Frame-Options DENY
+#         X-XSS-Protection "1; mode=block"
+#         Referrer-Policy strict-origin-when-cross-origin
+#         # Content Security Policy for additional security
+#         Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self';"
+#     }
+#     
+#     # Enable compression
+#     encode gzip
+#     
+#     # Rate limiting (optional)
+#     rate_limit {
+#         zone dynamic {
+#             key {remote_ip}
+#             events 100
+#             window 1m
+#         }
+#     }
+#     
+#     # Logging
+#     log {
+#         output file /data/access.log
+#         format json
+#     }
+# }
+
+# HTTP to HTTPS redirect for production (uncomment for production)
+# http://your-domain.com {
+#     redir https://your-domain.com{uri}
+# }

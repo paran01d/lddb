@@ -6,12 +6,8 @@ services:
     image: lddb:latest
     container_name: lddb-app
     restart: unless-stopped
-    ports:
-      - "8090:8080"
-      - "8091:8081" 
-      - "8092:8082"
-      - "8093:8083"
-      - "8094:8084"
+    expose:
+      - "8080"
     volumes:
       # Persist database outside container
       - lddb_data:/app/data
@@ -31,12 +27,39 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      - caddy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: lddb-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8090:8090"  # HTTP fallback
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - lddb-network
+    labels:
+      - "description=Caddy reverse proxy with automatic HTTPS"
 
 volumes:
   lddb_data:
     driver: local
     labels:
       - "description=LDDB SQLite database storage"
+  caddy_data:
+    driver: local
+    labels:
+      - "description=Caddy data directory for certificates"
+  caddy_config:
+    driver: local
+    labels:
+      - "description=Caddy configuration directory"
 
 networks:
   lddb-network:
