@@ -309,6 +309,28 @@ function populateAddForm(data) {
     document.getElementById('form-format').value = data.format || '';
     document.getElementById('form-sides').value = data.sides || '';
     document.getElementById('form-runtime').value = data.runtime || '';
+    document.getElementById('form-cover-url').value = data.cover_image_url || '';
+    
+    // Show cover image preview if available
+    const coverUrl = data.cover_image_url;
+    if (coverUrl && !coverUrl.includes('loading.gif')) {
+        showCoverPreview(coverUrl);
+    }
+}
+
+// Show cover image preview in form
+function showCoverPreview(url) {
+    const preview = document.getElementById('form-cover-preview');
+    const img = document.getElementById('form-cover-img');
+    
+    if (preview && img && url) {
+        img.src = url;
+        preview.style.display = 'block';
+        
+        img.onerror = function() {
+            preview.style.display = 'none';
+        };
+    }
 }
 
 // Handle add LaserDisc form submission
@@ -325,6 +347,7 @@ async function handleAddLaserDisc(e) {
         format: formData.get('format') || document.getElementById('form-format').value || '',
         sides: parseInt(formData.get('sides') || document.getElementById('form-sides').value) || 0,
         runtime: parseInt(formData.get('runtime') || document.getElementById('form-runtime').value) || 0,
+        cover_image_url: formData.get('cover_image_url') || document.getElementById('form-cover-url').value || '',
         notes: formData.get('notes') || document.getElementById('form-notes').value || ''
     };
 

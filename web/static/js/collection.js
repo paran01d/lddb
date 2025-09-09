@@ -164,10 +164,17 @@ class CollectionManager {
 
         card.innerHTML = `
             <div class="card-header">
-                <h3>${escapeHtml(laserdisc.title)}</h3>
-                <span class="watched-status ${watchedClass}" title="${watchedText}">
-                    ${watchedIcon}
-                </span>
+                ${laserdisc.cover_image_url && laserdisc.cover_image_url !== 'https://www.lddb.com/images/visual/loading.gif' ? 
+                    `<div class="card-cover">
+                        <img src="${laserdisc.cover_image_url}" alt="${escapeHtml(laserdisc.title)} cover" loading="lazy" 
+                             onerror="this.style.display='none'; this.parentNode.classList.add('no-image')">
+                    </div>` : ''}
+                <div class="card-header-content">
+                    <h3>${escapeHtml(laserdisc.title)}</h3>
+                    <span class="watched-status ${watchedClass}" title="${watchedText}">
+                        ${watchedIcon}
+                    </span>
+                </div>
             </div>
             
             <div class="card-body">
@@ -175,7 +182,7 @@ class CollectionManager {
                     <p><strong>Year:</strong> ${laserdisc.year || 'Unknown'}</p>
                     <p><strong>UPC:</strong> <code>${laserdisc.upc}</code></p>
                     ${laserdisc.director ? `<p><strong>Director:</strong> ${escapeHtml(laserdisc.director)}</p>` : ''}
-                    ${laserdisc.genre ? `<p><strong>Genre:</strong> ${escapeHtml(laserdisc.genre)}</p>` : ''}
+                    ${laserdisc.genre ? `<p><strong>Category:</strong> ${escapeHtml(laserdisc.genre)}</p>` : ''}
                     ${laserdisc.format ? `<p><strong>Format:</strong> <span class="format-badge">${laserdisc.format}</span></p>` : ''}
                     ${laserdisc.runtime ? `<p><strong>Runtime:</strong> ${laserdisc.runtime} min</p>` : ''}
                     ${laserdisc.sides ? `<p><strong>Sides:</strong> ${laserdisc.sides}</p>` : ''}
@@ -185,6 +192,7 @@ class CollectionManager {
                 
                 <div class="card-meta">
                     <small>Added: ${addedDate}</small>
+                    ${laserdisc.lddb_url ? `<a href="${laserdisc.lddb_url}" target="_blank" class="lddb-link" title="View on LDDB">🔗 LDDB Details</a>` : ''}
                 </div>
             </div>
             

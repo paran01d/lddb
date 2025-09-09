@@ -16,6 +16,7 @@ type LaserDisc struct {
 	Sides         int       `json:"sides"`         // 1 or 2
 	Runtime       int       `json:"runtime"`       // minutes
 	CoverImageURL string    `json:"cover_image_url"`
+	LDDBUrl       string    `json:"lddb_url"`
 	Watched       bool      `json:"watched" gorm:"default:false"`
 	Notes         string    `json:"notes"`
 	AddedDate     time.Time `json:"added_date" gorm:"autoCreateTime"`
@@ -38,6 +39,7 @@ type CreateLaserDiscRequest struct {
 	Sides         int    `json:"sides"`
 	Runtime       int    `json:"runtime"`
 	CoverImageURL string `json:"cover_image_url"`
+	LDDBUrl       string `json:"lddb_url"`
 	Notes         string `json:"notes"`
 }
 
@@ -51,6 +53,7 @@ type UpdateLaserDiscRequest struct {
 	Sides         *int    `json:"sides"`
 	Runtime       *int    `json:"runtime"`
 	CoverImageURL *string `json:"cover_image_url"`
+	LDDBUrl       *string `json:"lddb_url"`
 	Watched       *bool   `json:"watched"`
 	Notes         *string `json:"notes"`
 }
@@ -66,6 +69,7 @@ type LookupResult struct {
 	Sides         int    `json:"sides"`
 	Runtime       int    `json:"runtime"`
 	CoverImageURL string `json:"cover_image_url"`
+	LDDBUrl       string `json:"lddb_url"`
 	Found         bool   `json:"found"`
 	Error         string `json:"error,omitempty"`
 }

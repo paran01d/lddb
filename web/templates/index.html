@@ -63,14 +63,18 @@
             <span class="close">&times;</span>
             <h2>Add LaserDisc</h2>
             <form id="add-form">
+                <div class="form-cover-preview" id="form-cover-preview" style="display: none;">
+                    <img id="form-cover-img" alt="Cover preview" />
+                </div>
                 <input type="text" id="form-upc" placeholder="UPC" required />
                 <input type="text" id="form-title" placeholder="Title" required />
                 <input type="number" id="form-year" placeholder="Year" />
                 <input type="text" id="form-director" placeholder="Director" />
-                <input type="text" id="form-genre" placeholder="Genre" />
+                <input type="text" id="form-genre" placeholder="Category" />
                 <input type="text" id="form-format" placeholder="Format" />
                 <input type="number" id="form-sides" placeholder="Sides" />
                 <input type="number" id="form-runtime" placeholder="Runtime (minutes)" />
+                <input type="url" id="form-cover-url" placeholder="Cover Image URL" />
                 <textarea id="form-notes" placeholder="Notes"></textarea>
                 <button type="submit" class="primary-btn">Add to Collection</button>
             </form>

@@ -68,22 +68,23 @@ func (s *LDDBScraper) LookupByUPC(upc string) (*models.LookupResult, error) {
 			return
 		}
 
-		// Look for LaserDisc information in various page structures
-		s.extractLaserDiscInfo(e, result)
-		
-		// Try to find the detailed link by looking for LaserDisc ID pattern
-		lines := strings.Split(e.Text, "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			// Look for pattern like "LV323503WS Ghost and the Darkness, The (1996)"
-			ldIdPattern := regexp.MustCompile(`(LV\w+)\s+.+?\((\d{4})\)`)
-			if matches := ldIdPattern.FindStringSubmatch(line); len(matches) > 1 {
-				ldId := matches[1]
-				// Construct detailed URL
-				detailURL = fmt.Sprintf("https://www.lddb.com/laserdisc/%s/", ldId)
-				break
+		// Look for detailed page links in href attributes
+		// Pattern: /laserdisc/{ID}/{CATALOG_NUMBER}/{TITLE}
+		e.ForEach("a[href*='/laserdisc/']", func(_ int, link *colly.HTMLElement) {
+			href := link.Attr("href")
+			if strings.Contains(href, "/laserdisc/") && detailURL == "" {
+				// Convert relative URL to absolute
+				if strings.HasPrefix(href, "/") {
+					detailURL = "https://www.lddb.com" + href
+				} else if strings.HasPrefix(href, "http") {
+					detailURL = href
+				}
+				log.Printf("Found detailed page link: %s", detailURL)
 			}
-		}
+		})
+		
+		// Fallback: Extract basic info from search results as before
+		s.extractLaserDiscInfo(e, result)
 	})
 
 	// Visit the search URL first
@@ -95,13 +96,17 @@ func (s *LDDBScraper) LookupByUPC(upc string) (*models.LookupResult, error) {
 	
 	s.collector.Wait()
 
-	// If we found a detailed URL and basic info, get more detailed information
-	if detailURL != "" && result.Found {
+	// If we found a detailed URL, get detailed information (even if result.Found is false)
+	if detailURL != "" {
+		log.Printf("Attempting to get detailed info from: %s", detailURL)
 		err := s.getDetailedInfo(detailURL, result)
 		if err != nil {
 			log.Printf("Warning: Could not fetch detailed info from %s: %v", detailURL, err)
-			// Don't fail the whole lookup, just log the warning
+		} else {
+			log.Printf("Successfully visited detailed page")
 		}
+	} else {
+		log.Printf("No detailed page link found")
 	}
 
 	return result, nil
@@ -109,41 +114,72 @@ func (s *LDDBScraper) LookupByUPC(upc string) (*models.LookupResult, error) {
 
 // getDetailedInfo fetches detailed information from the LaserDisc's dedicated page
 func (s *LDDBScraper) getDetailedInfo(url string, result *models.LookupResult) error {
+	// Extract LDDB ID from URL: /laserdisc/31738/SF098-1117/Star-Wars...
+	lddbIDPattern := regexp.MustCompile(`/laserdisc/(\d+)/`)
+	var lddbID string
+	if matches := lddbIDPattern.FindStringSubmatch(url); len(matches) > 1 {
+		lddbID = matches[1]
+		log.Printf("Extracted LDDB ID: %s", lddbID)
+	}
+	
 	// Create a new collector for the detailed page
 	detailCollector := colly.NewCollector()
 	detailCollector.UserAgent = s.collector.UserAgent
+	detailCollector.AllowURLRevisit = true
 	
 	detailCollector.OnHTML("html", func(e *colly.HTMLElement) {
 		pageText := e.Text
 		
-		// Look for director information
-		directorPattern := regexp.MustCompile(`(?i)director[:\s]+([^\n\r]+)`)
-		if matches := directorPattern.FindStringSubmatch(pageText); len(matches) > 1 {
-			director := strings.TrimSpace(matches[1])
-			// Clean up common artifacts
-			director = strings.TrimSuffix(director, ",")
-			director = strings.TrimSuffix(director, ".")
-			if len(director) > 0 && len(director) < 100 {
-				result.Director = director
+		// Debug logging
+		log.Printf("Visiting detailed page: %s", url)
+		
+		// Extract title and year from h2 class="lddb" element
+		// Format: "title (year) [discard]"
+		if result.Title == "" {
+			h2Text := e.ChildText("h2.lddb")
+			log.Printf("Found h2.lddb text: '%s'", h2Text)
+			if h2Text != "" {
+				// Parse format: "Star Wars: The Empire Strikes Back (1980) [SF098-1117]"
+				titleYearPattern := regexp.MustCompile(`^(.+?)\s*\((\d{4})\)\s*\[.+\]$`)
+				if matches := titleYearPattern.FindStringSubmatch(h2Text); len(matches) >= 3 {
+					result.Title = strings.TrimSpace(matches[1])
+					if year, err := strconv.Atoi(matches[2]); err == nil {
+						result.Year = year
+					}
+				} else {
+					// Fallback: just remove everything after [
+					if idx := strings.Index(h2Text, " ["); idx > 0 {
+						titlePart := strings.TrimSpace(h2Text[:idx])
+						// Extract year if present
+						yearPattern := regexp.MustCompile(`^(.+?)\s*\((\d{4})\)$`)
+						if matches := yearPattern.FindStringSubmatch(titlePart); len(matches) >= 3 {
+							result.Title = strings.TrimSpace(matches[1])
+							if year, err := strconv.Atoi(matches[2]); err == nil {
+								result.Year = year
+							}
+						} else {
+							result.Title = titlePart
+						}
+					}
+				}
 			}
 		}
 		
-		// Look for genre information
-		genrePattern := regexp.MustCompile(`(?i)genre[:\s]+([^\n\r]+)`)
-		if matches := genrePattern.FindStringSubmatch(pageText); len(matches) > 1 {
-			genre := strings.TrimSpace(matches[1])
-			genre = strings.TrimSuffix(genre, ",")
-			genre = strings.TrimSuffix(genre, ".")
-			if len(genre) > 0 && len(genre) < 50 {
-				result.Genre = genre
+		// Extract year if not already set
+		if result.Year == 0 {
+			yearPattern := regexp.MustCompile(`(?i)(?:year|date)[:\s]*(\d{4})`)
+			if matches := yearPattern.FindStringSubmatch(pageText); len(matches) > 1 {
+				if year, err := strconv.Atoi(matches[1]); err == nil {
+					result.Year = year
+				}
 			}
 		}
 		
 		// Look for runtime information
 		runtimePatterns := []string{
-			`(?i)runtime[:\s]+(\d+)\s*min`,
-			`(?i)duration[:\s]+(\d+)\s*min`,
-			`(?i)running time[:\s]+(\d+)\s*min`,
+			`(?i)runtime[:\s]*(\d+)\s*min`,
+			`(\d+)\s*minutes?`,
+			`(?i)duration[:\s]*(\d+)\s*min`,
 		}
 		
 		for _, pattern := range runtimePatterns {
@@ -156,21 +192,151 @@ func (s *LDDBScraper) getDetailedInfo(url string, result *models.LookupResult) e
 			}
 		}
 		
-		// Look for cover image
+		// Look for sides information
+		sidesPattern := regexp.MustCompile(`(?i)sides[:\s]*(\d+)`)
+		if matches := sidesPattern.FindStringSubmatch(pageText); len(matches) > 1 {
+			if sides, err := strconv.Atoi(matches[1]); err == nil {
+				result.Sides = sides
+			}
+		}
+		
+		// Extract structured fields from LDDB table format
+		s.extractTableFields(e, result)
+		
+		// Look for format information (CLV, CAV, etc.)
+		formatPatterns := []string{
+			`(?i)disc mode[:\s]*([A-Z]{3})`,
+			`(?i)format[:\s]*([A-Z/]+)`,
+			`\b(CLV|CAV)\b`,
+		}
+		
+		for _, pattern := range formatPatterns {
+			re := regexp.MustCompile(pattern)
+			if matches := re.FindStringSubmatch(pageText); len(matches) > 1 {
+				format := strings.TrimSpace(matches[1])
+				if format != "" && result.Format == "" {
+					result.Format = format
+					break
+				}
+			}
+		}
+		
+		// Construct cover image URL from LDDB ID if available
+		if lddbID != "" && result.CoverImageURL == "" {
+			// Convert LDDB ID to range grouping (e.g., 31738 -> 31701-31800)
+			if id, err := strconv.Atoi(lddbID); err == nil {
+				// Calculate range start (round down to nearest 100, then add 1)
+				rangeStart := ((id - 1) / 100) * 100 + 1
+				rangeEnd := rangeStart + 99
+				
+				// Construct cover URL
+				coverURL := fmt.Sprintf("https://www.lddb.com/cover/ld/%d-%d/thumb/%s.jpg", 
+					rangeStart, rangeEnd, lddbID)
+				result.CoverImageURL = coverURL
+				log.Printf("Constructed cover image URL: %s", coverURL)
+			}
+		}
+		
+		// Look for cover image in page (fallback)
 		e.ForEach("img", func(_ int, img *colly.HTMLElement) {
 			src := img.Attr("src")
-			alt := strings.ToLower(img.Attr("alt"))
-			if strings.Contains(src, "cover") || strings.Contains(alt, "cover") || strings.Contains(alt, "laserdisc") {
+			
+			// Skip loading gifs and generic images
+			if strings.Contains(src, "loading.gif") || strings.Contains(src, "spacer.gif") {
+				return
+			}
+			
+			// Look for actual cover images
+			if strings.Contains(src, "/cover/ld/") && strings.Contains(src, "/thumb/") {
 				if strings.HasPrefix(src, "/") {
 					result.CoverImageURL = "https://www.lddb.com" + src
 				} else if strings.HasPrefix(src, "http") {
 					result.CoverImageURL = src
 				}
+				log.Printf("Found cover image in page: %s", result.CoverImageURL)
 			}
 		})
+		
+		// Set the LDDB URL for reference
+		result.LDDBUrl = url
+		
+		// Mark as found if we got essential information
+		if result.Title != "" {
+			result.Found = true
+		}
 	})
 	
 	return detailCollector.Visit(url)
+}
+
+// extractTableFields extracts structured fields from LDDB table format
+// Table structure: <tr><td class="field">FieldName&nbsp;</td><td class="data">value or <a>link</a></td></tr>
+func (s *LDDBScraper) extractTableFields(e *colly.HTMLElement, result *models.LookupResult) {
+	e.ForEach("tr", func(_ int, row *colly.HTMLElement) {
+		fieldCell := row.ChildText("td.field")
+		fieldName := strings.ToLower(strings.TrimSpace(strings.ReplaceAll(fieldCell, "\u00a0", " ")))
+		
+		// Remove common suffixes and clean field name
+		fieldName = strings.TrimSuffix(fieldName, ":")
+		fieldName = strings.TrimSpace(fieldName)
+		
+		log.Printf("Processing table field: '%s'", fieldName)
+		
+		switch fieldName {
+		case "category":
+			if result.Genre == "" {
+				// Get link text from data cell
+				categoryLink := row.ChildText("td.data a")
+				if categoryLink != "" {
+					result.Genre = strings.TrimSpace(categoryLink)
+					log.Printf("Found category: %s", result.Genre)
+				}
+			}
+			
+		case "sides":
+			if result.Sides == 0 {
+				sidesText := row.ChildText("td.data")
+				if sidesText != "" {
+					if sides, err := strconv.Atoi(strings.Fields(sidesText)[0]); err == nil {
+						result.Sides = sides
+						log.Printf("Found sides: %d", result.Sides)
+					}
+				}
+			}
+			
+		case "length":
+			if result.Runtime == 0 {
+				lengthText := row.ChildText("td.data")
+				if lengthText != "" {
+					// Extract minutes from various formats (Length field contains runtime)
+					runtimePatterns := []string{
+						`(\d+)\s*min`,
+						`(\d+)\s*minutes?`,
+						`(\d+)`,
+					}
+					for _, pattern := range runtimePatterns {
+						re := regexp.MustCompile(pattern)
+						if matches := re.FindStringSubmatch(lengthText); len(matches) > 1 {
+							if runtime, err := strconv.Atoi(matches[1]); err == nil {
+								result.Runtime = runtime
+								log.Printf("Found runtime from Length: %d minutes", result.Runtime)
+								break
+							}
+						}
+					}
+				}
+			}
+			
+		case "format", "disc mode":
+			if result.Format == "" {
+				formatText := row.ChildText("td.data")
+				if formatText != "" {
+					result.Format = strings.TrimSpace(formatText)
+					log.Printf("Found format: %s", result.Format)
+				}
+			}
+		}
+	})
 }
 
 // extractLaserDiscInfo extracts LaserDisc information from the HTML

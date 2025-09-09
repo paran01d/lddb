@@ -65,6 +65,7 @@ func (s *Service) CreateLaserDisc(req *models.CreateLaserDiscRequest) (*models.L
 		Sides:         req.Sides,
 		Runtime:       req.Runtime,
 		CoverImageURL: req.CoverImageURL,
+		LDDBUrl:       req.LDDBUrl,
 		Notes:         req.Notes,
 	}
 
@@ -110,6 +111,9 @@ func (s *Service) UpdateLaserDisc(id uint, req *models.UpdateLaserDiscRequest) (
 	}
 	if req.CoverImageURL != nil {
 		updates["cover_image_url"] = *req.CoverImageURL
+	}
+	if req.LDDBUrl != nil {
+		updates["lddb_url"] = *req.LDDBUrl
 	}
 	if req.Watched != nil {
 		updates["watched"] = *req.Watched
