@@ -33,18 +33,7 @@ func (h *LookupHandler) LookupByUPC(c *gin.Context) {
 		return
 	}
 
-	// First check if we already have this UPC in our collection
-	existing, err := h.dbService.GetLaserDiscByUPC(upc)
-	if err == nil && existing != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"message":     "LaserDisc found in local collection",
-			"source":      "local",
-			"laserdisc":  existing,
-		})
-		return
-	}
-
-	// If not found locally, scrape LDDB
+	// Always scrape LDDB for the most up-to-date information
 	result, err := h.scraper.LookupByUPC(upc)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -64,9 +53,21 @@ func (h *LookupHandler) LookupByUPC(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "LaserDisc information found",
-		"source":  "lddb.com",
-		"result":  result,
-	})
+	// Check if we already have this UPC in our collection for reference
+	existing, _ := h.dbService.GetLaserDiscByUPC(upc)
+	
+	// Prepare response with both LDDB result and local info
+	response := gin.H{
+		"source": "lddb.com",
+		"result": result,
+	}
+	
+	if existing != nil {
+		response["existing"] = existing
+		response["message"] = "LaserDisc found in LDDB (also exists in local collection)"
+	} else {
+		response["message"] = "LaserDisc information found in LDDB"
+	}
+
+	c.JSON(http.StatusOK, response)
 }

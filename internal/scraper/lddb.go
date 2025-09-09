@@ -237,11 +237,20 @@ func (s *LDDBScraper) getDetailedInfo(url string, result *models.LookupResult) e
 			}
 		}
 		
-		// Look for cover image in page (fallback)
+		// Look for format images (CLV.png or CAV.png) and cover images
 		e.ForEach("img", func(_ int, img *colly.HTMLElement) {
 			src := img.Attr("src")
 			
-			// Skip loading gifs and generic images
+			// Check for format images first (case sensitive)
+			if strings.Contains(src, "clv.png") && result.Format == "" {
+				result.Format = "CLV"
+				log.Printf("Found format from image: CLV")
+			} else if strings.Contains(src, "cav.png") && result.Format == "" {
+				result.Format = "CAV"
+				log.Printf("Found format from image: CAV")
+			}
+			
+			// Skip loading gifs and generic images for cover extraction
 			if strings.Contains(src, "loading.gif") || strings.Contains(src, "spacer.gif") {
 				return
 			}
@@ -332,7 +341,7 @@ func (s *LDDBScraper) extractTableFields(e *colly.HTMLElement, result *models.Lo
 				formatText := row.ChildText("td.data")
 				if formatText != "" {
 					result.Format = strings.TrimSpace(formatText)
-					log.Printf("Found format: %s", result.Format)
+					log.Printf("Found format from table: %s", result.Format)
 				}
 			}
 		}
