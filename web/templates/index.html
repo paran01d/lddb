@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📀 LaserDisc Collection Manager</h1>
+            <p>Manage your LaserDisc collection with barcode scanning and automatic metadata lookup</p>
+        </header>
+
+        <main>
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <h3>Total</h3>
+                    <span id="total-count">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Watched</h3>
+                    <span id="watched-count">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Unwatched</h3>
+                    <span id="unwatched-count">0</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="scan-btn" class="primary-btn">📱 Scan Barcode</button>
+                <button id="add-manual-btn" class="secondary-btn">➕ Add Manual</button>
+                <button id="random-btn" class="accent-btn">🎲 Random Movie</button>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search your collection..." />
+                <button id="search-btn">🔍</button>
+            </div>
+
+            <div class="collection" id="collection">
+                <p class="loading">Loading collection...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="scan-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Scan LaserDisc Barcode</h2>
+            <div id="scanner"></div>
+            <p>Or enter UPC manually:</p>
+            <input type="text" id="manual-upc" placeholder="Enter UPC..." />
+            <button id="lookup-btn">Lookup</button>
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add LaserDisc</h2>
+            <form id="add-form">
+                <input type="text" id="form-upc" placeholder="UPC" required />
+                <input type="text" id="form-title" placeholder="Title" required />
+                <input type="number" id="form-year" placeholder="Year" />
+                <input type="text" id="form-director" placeholder="Director" />
+                <input type="text" id="form-genre" placeholder="Genre" />
+                <input type="text" id="form-format" placeholder="Format" />
+                <input type="number" id="form-sides" placeholder="Sides" />
+                <input type="number" id="form-runtime" placeholder="Runtime (minutes)" />
+                <textarea id="form-notes" placeholder="Notes"></textarea>
+                <button type="submit" class="primary-btn">Add to Collection</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/collection.js"></script>
+</body>
+</html>

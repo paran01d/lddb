@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -76,6 +78,30 @@ func main() {
 		api.GET("/random-unwatched", collectionHandler.GetRandomUnwatched)
 	}
 
-	log.Println("Starting server on :8080")
-	log.Fatal(router.Run(":8080"))
+	// Find an available port starting from 8080
+	port := findAvailablePort(8080)
+	log.Printf("Starting server on :%d", port)
+	log.Fatal(router.Run(fmt.Sprintf(":%d", port)))
+}
+
+// findAvailablePort finds an available port starting from the given port number
+func findAvailablePort(startPort int) int {
+	for port := startPort; port < startPort+100; port++ {
+		if isPortAvailable(port) {
+			return port
+		}
+	}
+	// If no port found in range, fall back to original
+	return startPort
+}
+
+// isPortAvailable checks if a port is available for binding
+func isPortAvailable(port int) bool {
+	address := fmt.Sprintf(":%d", port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	defer listener.Close()
+	return true
 }
