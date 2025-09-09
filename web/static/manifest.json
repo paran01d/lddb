@@ -1,0 +1,54 @@
+{
+  "name": "LDDB LaserDisc Collection Manager",
+  "short_name": "LDDB Manager",
+  "description": "Manage your LaserDisc collection with barcode scanning and automatic metadata lookup",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "categories": ["entertainment", "utilities"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/static/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Scan Barcode",
+      "short_name": "Scan",
+      "description": "Scan a LaserDisc barcode",
+      "url": "/?action=scan",
+      "icons": [
+        {
+          "src": "/static/favicon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Random Movie",
+      "short_name": "Random",
+      "description": "Pick a random unwatched movie",
+      "url": "/?action=random",
+      "icons": [
+        {
+          "src": "/static/favicon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
