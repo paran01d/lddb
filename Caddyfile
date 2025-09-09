@@ -23,8 +23,8 @@ cooee.mankies.com {
         X-XSS-Protection "1; mode=block"
         # Secure referrer policy
         Referrer-Policy strict-origin-when-cross-origin
-        # Content Security Policy for camera access
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; media-src 'self' blob:; camera 'self';"
+        # Content Security Policy for camera access and web workers
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; media-src 'self' blob:;"
         # Permissions policy for camera access
         Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
     }

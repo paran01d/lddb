@@ -10,8 +10,8 @@ class BarcodeScanner {
                 type: "LiveStream",
                 target: document.querySelector('#scanner'),
                 constraints: {
-                    width: 300,
-                    height: 200,
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
                     facingMode: "environment" // Use back camera
                 }
             },
@@ -19,18 +19,32 @@ class BarcodeScanner {
                 patchSize: "medium",
                 halfSample: true
             },
-            numOfWorkers: 2,
+            numOfWorkers: navigator.hardwareConcurrency || 2,
             frequency: 10,
             decoder: {
                 readers: [
-                    "code_128_reader",
-                    "ean_reader",
-                    "ean_8_reader",
-                    "code_39_reader",
-                    "codabar_reader"
+                    "ean_reader",      // EAN-13 (most common for UPC)
+                    "ean_8_reader",    // EAN-8
+                    "code_128_reader", // Code 128
+                    "code_39_reader",  // Code 39
+                    "codabar_reader"   // Codabar
                 ]
             },
-            locate: true
+            locate: true,
+            debug: {
+                showCanvas: true,
+                showPatches: false,
+                showFoundPatches: false,
+                showSkeleton: false,
+                showLabels: false,
+                showPatchLabels: false,
+                showRemainingPatchLabels: false,
+                boxFromPatches: {
+                    showTransformed: false,
+                    showTransformedBox: false,
+                    showBB: false
+                }
+            }
         };
     }
 
@@ -78,6 +92,10 @@ class BarcodeScanner {
             await this.init();
             
             return new Promise((resolve, reject) => {
+                // Clear any existing handlers
+                Quagga.offDetected();
+                Quagga.offProcessed();
+                
                 Quagga.init(this.scannerConfig, (err) => {
                     if (err) {
                         console.error('QuaggaJS initialization failed:', err);
@@ -86,39 +104,59 @@ class BarcodeScanner {
                     }
 
                     console.log('QuaggaJS initialized successfully');
-                    this.isScanning = true;
                     
                     // Set up barcode detection
                     Quagga.onDetected(this.handleBarcodeDetected.bind(this));
                     
-                    // Set up error handling
+                    // Set up visual feedback
                     Quagga.onProcessed((result) => {
                         const drawingCtx = Quagga.canvas.ctx.overlay;
                         const drawingCanvas = Quagga.canvas.dom.overlay;
 
-                        if (result) {
-                            // Draw bounding boxes
+                        if (result && drawingCtx && drawingCanvas) {
+                            // Clear previous drawings
+                            drawingCtx.clearRect(0, 0, 
+                                parseInt(drawingCanvas.getAttribute("width")), 
+                                parseInt(drawingCanvas.getAttribute("height"))
+                            );
+
+                            // Draw detection boxes
                             if (result.boxes) {
-                                drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
                                 result.boxes.filter(box => box !== result.box).forEach(box => {
-                                    Quagga.ImageDebug.drawPath(box, {x: 0, y: 1}, drawingCtx, {color: "green", lineWidth: 2});
+                                    Quagga.ImageDebug.drawPath(box, {x: 0, y: 1}, drawingCtx, {
+                                        color: "green", 
+                                        lineWidth: 2
+                                    });
                                 });
                             }
 
-                            // Draw the barcode outline
+                            // Draw the main detection box
                             if (result.box) {
-                                Quagga.ImageDebug.drawPath(result.box, {x: 0, y: 1}, drawingCtx, {color: "#00F", lineWidth: 2});
+                                Quagga.ImageDebug.drawPath(result.box, {x: 0, y: 1}, drawingCtx, {
+                                    color: "#00F", 
+                                    lineWidth: 2
+                                });
                             }
 
                             // Draw the barcode line
                             if (result.codeResult && result.codeResult.code) {
-                                Quagga.ImageDebug.drawPath(result.line, {x: 'x', y: 'y'}, drawingCtx, {color: 'red', lineWidth: 3});
+                                Quagga.ImageDebug.drawPath(result.line, {x: 'x', y: 'y'}, drawingCtx, {
+                                    color: 'red', 
+                                    lineWidth: 3
+                                });
                             }
                         }
                     });
 
+                    // Start the scanner
                     Quagga.start();
-                    resolve();
+                    
+                    // Wait for video to be ready before marking as scanning
+                    setTimeout(() => {
+                        this.isScanning = true;
+                        console.log('Scanner started and ready for detection');
+                        resolve();
+                    }, 1000);
                 });
             });
         } catch (error) {
@@ -134,14 +172,24 @@ class BarcodeScanner {
         }
 
         try {
+            // Clean up event handlers
+            Quagga.offDetected();
+            Quagga.offProcessed();
+            
+            // Stop the scanner
             Quagga.stop();
             this.isScanning = false;
             console.log('Barcode scanning stopped');
             
-            // Clear the scanner display
+            // Clear the scanner display and restore placeholder
             const scannerElement = document.querySelector('#scanner');
             if (scannerElement) {
-                scannerElement.innerHTML = '<p>Camera stopped</p>';
+                scannerElement.innerHTML = `
+                    <div class="scanner-placeholder">
+                        <p>📷 Camera stopped</p>
+                        <p class="scanner-instructions">Click "Start Camera" to begin scanning</p>
+                    </div>
+                `;
             }
         } catch (error) {
             console.error('Error stopping scanner:', error);
@@ -151,24 +199,33 @@ class BarcodeScanner {
     // Handle barcode detection
     handleBarcodeDetected(result) {
         const code = result.codeResult.code;
-        console.log('Barcode detected:', code);
+        const confidence = result.codeResult.confidence || 0;
         
-        // Stop scanning immediately after detection
-        this.stopScanning();
+        console.log('Barcode detected:', code, 'Confidence:', confidence);
         
-        // Show notification
-        showNotification(`Barcode detected: ${code}`, 'success');
-        
-        // Fill in the manual UPC field
-        const manualUpcInput = document.getElementById('manual-upc');
-        if (manualUpcInput) {
-            manualUpcInput.value = code;
+        // Only accept high-confidence results
+        if (confidence > 80) {
+            // Stop scanning immediately after detection
+            this.stopScanning();
+            
+            // Show notification
+            showNotification(`✅ Barcode detected: ${code}`, 'success');
+            
+            // Fill in the manual UPC field
+            const manualUpcInput = document.getElementById('manual-upc');
+            if (manualUpcInput) {
+                manualUpcInput.value = code;
+            }
+            
+            // Automatically trigger lookup
+            setTimeout(() => {
+                if (typeof lookupUPC === 'function') {
+                    lookupUPC();
+                }
+            }, 500);
+        } else {
+            console.log('Low confidence detection, continuing scan...');
         }
-        
-        // Automatically trigger lookup
-        setTimeout(() => {
-            lookupUPC();
-        }, 500);
     }
 
     // Check if the scanner is currently active
