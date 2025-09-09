@@ -237,17 +237,19 @@ func (s *LDDBScraper) getDetailedInfo(url string, result *models.LookupResult) e
 			}
 		}
 		
-		// Look for format images (CLV.png or CAV.png) and cover images
+		// Look for format images (clv.png or cav.png) and cover images
 		e.ForEach("img", func(_ int, img *colly.HTMLElement) {
 			src := img.Attr("src")
 			
-			// Check for format images first (case sensitive)
-			if strings.Contains(src, "clv.png") && result.Format == "" {
+			// Format detection and image processing
+			
+			// Check for format images (override any previous format detection)
+			if strings.Contains(src, "/mode/clv.png") {
 				result.Format = "CLV"
-				log.Printf("Found format from image: CLV")
-			} else if strings.Contains(src, "cav.png") && result.Format == "" {
+				log.Printf("Found format from image: CLV (%s)", src)
+			} else if strings.Contains(src, "/mode/cav.png") {
 				result.Format = "CAV"
-				log.Printf("Found format from image: CAV")
+				log.Printf("Found format from image: CAV (%s)", src)
 			}
 			
 			// Skip loading gifs and generic images for cover extraction
