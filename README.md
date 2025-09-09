@@ -40,17 +40,36 @@ A web-based LaserDisc collection management application with barcode scanning, a
 
 ```bash
 # Start the application
-docker-compose up -d
+docker compose up -d
 
 # Stop the application  
-docker-compose down
+docker compose down
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Rebuild after changes
-docker-compose up -d --build
+docker compose up -d --build
 ```
+
+### Backup and Restore
+
+**Create Backup:**
+```bash
+./backup.sh
+```
+- Creates timestamped backup in `./backups/` directory
+- Shows collection summary (total, watched, unwatched counts)
+- SQLite database file with all metadata and cover images
+
+**Restore from Backup:**
+```bash
+./restore.sh ./backups/lddb_backup_20250909_173000.db
+```
+- Lists available backup files if no argument provided
+- Shows backup contents before restoring
+- Safely stops/starts application during restore
+- Confirms restoration success
 
 ### SSL Configuration
 
