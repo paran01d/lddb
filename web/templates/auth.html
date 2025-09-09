@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .auth-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .auth-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .auth-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .auth-subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+        
+        .token-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .token-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        
+        .token-submit {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .token-submit:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .auth-help {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            text-align: left;
+        }
+        
+        .auth-help strong {
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .auth-help p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+        
+        .success-message {
+            color: #28a745;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-icon">📀</div>
+            <h1 class="auth-title">Access Required</h1>
+            <p class="auth-subtitle">Enter the access token to continue</p>
+            
+            <form id="auth-form">
+                <input 
+                    type="text" 
+                    id="token-input" 
+                    class="token-input" 
+                    placeholder="WORD-WORD-1234"
+                    maxlength="14"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    required
+                />
+                <button type="submit" class="token-submit">Access Collection</button>
+            </form>
+            
+            <div id="message" class="message"></div>
+            
+            <div class="auth-help">
+                <strong>🔑 How to get your access token:</strong>
+                <p>1. Check the server logs where LDDB is running</p>
+                <p>2. Look for: "🔑 Access Token: WORD-WORD-1234"</p>
+                <p>3. Enter the token above (format: WORD-WORD-1234)</p>
+                <p>4. Token is saved to your device for future visits</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-format token input as user types
+        const tokenInput = document.getElementById('token-input');
+        const messageDiv = document.getElementById('message');
+        const authForm = document.getElementById('auth-form');
+
+        tokenInput.addEventListener('input', function(e) {
+            let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            
+            // Format as WORD-WORD-1234
+            if (value.length > 4) {
+                value = value.substring(0, 4) + '-' + value.substring(4);
+            }
+            if (value.length > 9) {
+                value = value.substring(0, 9) + '-' + value.substring(9);
+            }
+            if (value.length > 14) {
+                value = value.substring(0, 14);
+            }
+            
+            e.target.value = value;
+        });
+
+        authForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const token = tokenInput.value.trim();
+            if (!token) {
+                showMessage('Please enter the access token', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: token })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store token in localStorage
+                    localStorage.setItem('lddb_token', token);
+                    showMessage('Access granted! Redirecting...', 'success');
+                    
+                    // Redirect to main app after short delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    showMessage(data.error || 'Invalid access token', 'error');
+                    tokenInput.focus();
+                    tokenInput.select();
+                }
+            } catch (error) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}-message`;
+        }
+
+        // Focus input on page load
+        tokenInput.focus();
+    </script>
+</body>
+</html>

@@ -40,6 +40,15 @@ const elements = {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     console.log('LDDB Collection Manager starting...');
+    
+    // Check if we have a valid token
+    const token = localStorage.getItem('lddb_token');
+    if (!token) {
+        console.log('No token found, redirecting to auth page');
+        window.location.href = '/auth';
+        return;
+    }
+    
     initializeEventListeners();
     loadCollection();
     
@@ -172,13 +181,24 @@ function initializeEventListeners() {
 // API functions
 async function apiCall(endpoint, options = {}) {
     try {
+        // Get token from localStorage
+        const token = localStorage.getItem('lddb_token');
+        
         const response = await fetch(`${API_BASE}${endpoint}`, {
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : '',
                 ...options.headers
             },
             ...options
         });
+
+        if (response.status === 401) {
+            // Token invalid or missing, redirect to auth page
+            localStorage.removeItem('lddb_token');
+            window.location.href = '/auth';
+            return;
+        }
 
         if (!response.ok) {
             const error = await response.json();
