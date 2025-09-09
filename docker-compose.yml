@@ -9,10 +9,10 @@ services:
     expose:
       - "8080"
     volumes:
-      # Persist database outside container
+      # Persist database in named volume (writable)
       - lddb_data:/app/data
-      # Mount database file to data directory
-      - ./collection.db:/app/collection.db
+      # Create writable database in container - don't mount host file
+      # The database will be created automatically in the container
     environment:
       - GIN_MODE=release
       - TZ=UTC
