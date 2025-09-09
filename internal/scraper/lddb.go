@@ -24,6 +24,9 @@ func NewLDDBScraper() *LDDBScraper {
 	// Set user agent to avoid being blocked
 	c.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
+	// Disable visit cache to allow repeated lookups of same UPC
+	c.AllowURLRevisit = true
+
 	// Add some basic error handling
 	c.OnError(func(r *colly.Response, err error) {
 		log.Printf("Error scraping %s: %v", r.Request.URL, err)

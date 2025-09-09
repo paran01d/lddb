@@ -3,30 +3,17 @@ version: '3.8'
 services:
   lddb:
     build: .
-    image: lddb:latest
     container_name: lddb-app
     restart: unless-stopped
     expose:
       - "8080"
     volumes:
-      # Persist database in named volume (writable)
       - lddb_data:/app/data
-      # Create writable database in container - don't mount host file
-      # The database will be created automatically in the container
     environment:
       - GIN_MODE=release
       - TZ=UTC
     networks:
       - lddb-network
-    labels:
-      - "com.docker.compose.project=lddb"
-      - "description=LaserDisc Collection Manager"
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/collection"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     depends_on:
       - caddy
 

@@ -42,6 +42,9 @@ COPY --from=builder /app/web ./web
 # Create data directory for SQLite database
 RUN mkdir -p /app/data && chown -R appuser:appgroup /app
 
+# Declare volume for data persistence
+VOLUME ["/app/data"]
+
 # Switch to non-root user
 USER appuser
 

@@ -38,7 +38,76 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('LDDB Collection Manager starting...');
     initializeEventListeners();
     loadCollection();
+    
+    // Add debug console for mobile (development only)
+    addMobileDebugConsole();
 });
+
+// Add mobile debug console
+function addMobileDebugConsole() {
+    // Only add on mobile or when URL contains debug=1
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const debugMode = window.location.search.includes('debug=1');
+    
+    if (isMobile || debugMode) {
+        const debugConsole = document.createElement('div');
+        debugConsole.id = 'mobile-console';
+        debugConsole.innerHTML = `
+            <div class="console-header">
+                <span>Debug Console</span>
+                <button onclick="toggleConsole()">−</button>
+            </div>
+            <div class="console-content" id="console-content"></div>
+        `;
+        document.body.appendChild(debugConsole);
+        
+        // Intercept console.log
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToMobileConsole('LOG', args.join(' '));
+        };
+        
+        const originalError = console.error;
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToMobileConsole('ERROR', args.join(' '));
+        };
+    }
+}
+
+function addToMobileConsole(type, message) {
+    const content = document.getElementById('console-content');
+    if (!content) return;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = document.createElement('div');
+    logEntry.className = `console-entry console-${type.toLowerCase()}`;
+    logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+    
+    content.appendChild(logEntry);
+    content.scrollTop = content.scrollHeight;
+    
+    // Keep only last 50 entries
+    const entries = content.querySelectorAll('.console-entry');
+    if (entries.length > 50) {
+        entries[0].remove();
+    }
+}
+
+function toggleConsole() {
+    const console = document.getElementById('mobile-console');
+    const content = console.querySelector('.console-content');
+    const btn = console.querySelector('button');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        btn.textContent = '−';
+    } else {
+        content.style.display = 'none';
+        btn.textContent = '+';
+    }
+}
 
 // Event listeners
 function initializeEventListeners() {

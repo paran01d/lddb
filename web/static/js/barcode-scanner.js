@@ -151,18 +151,54 @@ class BarcodeScanner {
                     // Start the scanner
                     Quagga.start();
                     
-                    // Wait for video to be ready before marking as scanning
-                    setTimeout(() => {
-                        this.isScanning = true;
-                        console.log('Scanner started and ready for detection');
-                        resolve();
-                    }, 1000);
+                    // Mark as scanning immediately and add visual feedback
+                    this.isScanning = true;
+                    
+                    // Add scanner overlay with instructions
+                    this.addScannerOverlay();
+                    
+                    // Mark scanner as active
+                    const scannerElement = document.querySelector('#scanner');
+                    if (scannerElement) {
+                        scannerElement.classList.add('scanning');
+                    }
+                    
+                    console.log('Scanner started and ready for detection');
+                    resolve();
                 });
             });
         } catch (error) {
             console.error('Failed to start scanning:', error);
             throw error;
         }
+    }
+
+    // Add scanner overlay with instructions
+    addScannerOverlay() {
+        const scannerElement = document.querySelector('#scanner');
+        if (!scannerElement) return;
+        
+        // Remove existing overlay
+        const existingOverlay = scannerElement.querySelector('.scanner-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'scanner-overlay';
+        overlay.innerHTML = `
+            📷 Camera Active - Point at barcode
+            <br><small>Green rectangles show detection areas</small>
+        `;
+        
+        scannerElement.appendChild(overlay);
+        
+        // Auto-hide overlay after 3 seconds
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.remove();
+            }
+        }, 3000);
     }
 
     // Stop scanning
@@ -181,9 +217,18 @@ class BarcodeScanner {
             this.isScanning = false;
             console.log('Barcode scanning stopped');
             
-            // Clear the scanner display and restore placeholder
+            // Remove active state
             const scannerElement = document.querySelector('#scanner');
             if (scannerElement) {
+                scannerElement.classList.remove('scanning');
+                
+                // Remove overlay
+                const overlay = scannerElement.querySelector('.scanner-overlay');
+                if (overlay) {
+                    overlay.remove();
+                }
+                
+                // Clear and restore placeholder
                 scannerElement.innerHTML = `
                     <div class="scanner-placeholder">
                         <p>📷 Camera stopped</p>
@@ -199,12 +244,50 @@ class BarcodeScanner {
     // Handle barcode detection
     handleBarcodeDetected(result) {
         const code = result.codeResult.code;
-        const confidence = result.codeResult.confidence || 0;
         
-        console.log('Barcode detected:', code, 'Confidence:', confidence);
+        // Check if QuaggaJS confidence is inverted (0 = high confidence)
+        const rawConfidence = result.codeResult.confidence;
         
-        // Only accept high-confidence results
-        if (confidence > 80) {
+        // Calculate confidence from individual digit error rates as backup
+        let avgError = 0;
+        let validDigits = 0;
+        
+        if (result.codeResult.decodedCodes) {
+            result.codeResult.decodedCodes.forEach(decoded => {
+                if (decoded.error !== undefined && decoded.code !== -1) {
+                    avgError += decoded.error;
+                    validDigits++;
+                }
+            });
+            
+            if (validDigits > 0) {
+                avgError = avgError / validDigits;
+            }
+        }
+        
+        // Convert error rate to confidence percentage (lower error = higher confidence)
+        const calculatedConfidence = Math.max(0, (1 - avgError) * 100);
+        
+        console.log('Confidence analysis:', {
+            code: code,
+            rawConfidence: rawConfidence,
+            avgError: avgError.toFixed(3),
+            calculatedConfidence: calculatedConfidence.toFixed(1),
+            validDigits: validDigits,
+            note: "If rawConfidence is 0, it might mean 100% confidence in QuaggaJS"
+        });
+        
+        // Test both confidence methods
+        const isValidUPC = code && (code.length === 12 || code.length === 13) && /^\d+$/.test(code);
+        
+        // If raw confidence is 0 (possibly meaning 100% in QuaggaJS), accept it
+        // Otherwise use calculated confidence
+        const confidence = rawConfidence === 0 ? 100 : calculatedConfidence;
+        const hasGoodConfidence = confidence > 85;
+        
+        console.log('Final validation:', { isValidUPC, hasGoodConfidence, confidence: confidence.toFixed(1) });
+        
+        if (isValidUPC && hasGoodConfidence) {
             // Stop scanning immediately after detection
             this.stopScanning();
             
@@ -224,7 +307,15 @@ class BarcodeScanner {
                 }
             }, 500);
         } else {
-            console.log('Low confidence detection, continuing scan...');
+            console.log('Detection rejected:', {
+                reason: !isValidUPC ? 'Invalid UPC format' : 'Low confidence',
+                code: code,
+                length: code?.length,
+                calculatedConfidence: calculatedConfidence.toFixed(1),
+                avgError: avgError.toFixed(3),
+                isDigitsOnly: /^\d+$/.test(code || ''),
+                isValidLength: code && (code.length === 12 || code.length === 13)
+            });
         }
     }
 
