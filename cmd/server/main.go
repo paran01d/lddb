@@ -182,9 +182,10 @@ func randomInt(max int) int {
 // authMiddleware checks for valid access token
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Skip auth for token entry page, validation endpoint, and static files
+		// Skip auth for token entry page, validation endpoint, main page, and static files
+		// Main page will handle auth client-side via JavaScript
 		path := c.Request.URL.Path
-		if path == "/auth" || path == "/auth/validate" || strings.HasPrefix(path, "/static/") {
+		if path == "/auth" || path == "/auth/validate" || path == "/" || strings.HasPrefix(path, "/static/") {
 			c.Next()
 			return
 		}

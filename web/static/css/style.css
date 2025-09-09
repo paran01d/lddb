@@ -1089,10 +1089,12 @@ header p {
 
 .notification.success {
     background: #28a745;
+    color: white;
 }
 
 .notification.error {
     background: #dc3545;
+    color: white;
 }
 
 .notification.warning {
@@ -1102,6 +1104,7 @@ header p {
 
 .notification.info {
     background: #17a2b8;
+    color: white;
 }
 
 @keyframes slideIn {
