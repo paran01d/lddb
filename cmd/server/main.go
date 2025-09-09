@@ -1,0 +1,81 @@
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/paran01d/lddb/internal/database"
+	"github.com/paran01d/lddb/internal/handlers"
+	"github.com/paran01d/lddb/internal/models"
+)
+
+func main() {
+	// Initialize database
+	db, err := gorm.Open(sqlite.Open("collection.db"), &gorm.Config{})
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	// Auto-migrate the schema
+	err = db.AutoMigrate(&models.LaserDisc{})
+	if err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
+
+	// Initialize database service
+	dbService := database.NewService(db)
+
+	// Initialize handlers
+	collectionHandler := handlers.NewCollectionHandler(dbService)
+	lookupHandler := handlers.NewLookupHandler(dbService)
+
+	// Initialize Gin router
+	router := gin.Default()
+
+	// CORS middleware
+	router.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
+		c.Next()
+	})
+
+	// Serve static files
+	router.Static("/static", "./web/static")
+	router.LoadHTMLGlob("web/templates/*")
+
+	// Web routes
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"title": "LaserDisc Collection Manager",
+		})
+	})
+
+	// API routes
+	api := router.Group("/api")
+	{
+		// Collection endpoints
+		api.GET("/collection", collectionHandler.GetCollection)
+		api.POST("/collection", collectionHandler.AddLaserDisc)
+		api.PUT("/collection/:id", collectionHandler.UpdateLaserDisc)
+		api.DELETE("/collection/:id", collectionHandler.DeleteLaserDisc)
+		api.POST("/collection/:id/watched", collectionHandler.ToggleWatched)
+
+		// Lookup and random endpoints
+		api.GET("/lookup/:upc", lookupHandler.LookupByUPC)
+		api.GET("/random-unwatched", collectionHandler.GetRandomUnwatched)
+	}
+
+	log.Println("Starting server on :8080")
+	log.Fatal(router.Run(":8080"))
+}
