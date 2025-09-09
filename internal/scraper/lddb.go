@@ -112,6 +112,76 @@ func (s *LDDBScraper) LookupByUPC(upc string) (*models.LookupResult, error) {
 	return result, nil
 }
 
+// LookupByReference searches lddb.com for LaserDisc information using catalog reference
+func (s *LDDBScraper) LookupByReference(reference string) (*models.LookupResult, error) {
+	result := &models.LookupResult{
+		UPC:   reference, // Store reference in UPC field for consistency
+		Found: false,
+	}
+
+	// Clean reference (remove extra spaces)
+	cleanReference := strings.TrimSpace(reference)
+	if len(cleanReference) == 0 {
+		result.Error = "Invalid reference format"
+		return result, nil
+	}
+
+	// Search by reference instead of UPC
+	searchURL := fmt.Sprintf("https://www.lddb.com/search.php?reference=%s", cleanReference)
+	var detailURL string
+
+	// Use the same scraping logic as UPC lookup
+	s.collector.OnHTML("html", func(e *colly.HTMLElement) {
+		pageText := strings.ToLower(e.Text)
+		
+		if strings.Contains(pageText, "no results") || 
+		   strings.Contains(pageText, "not found") ||
+		   strings.Contains(pageText, "0 results") {
+			result.Found = false
+			return
+		}
+
+		// Look for detailed page links
+		e.ForEach("a[href*='/laserdisc/']", func(_ int, link *colly.HTMLElement) {
+			href := link.Attr("href")
+			if strings.Contains(href, "/laserdisc/") && detailURL == "" {
+				if strings.HasPrefix(href, "/") {
+					detailURL = "https://www.lddb.com" + href
+				} else if strings.HasPrefix(href, "http") {
+					detailURL = href
+				}
+				log.Printf("Found detailed page link via reference: %s", detailURL)
+			}
+		})
+		
+		s.extractLaserDiscInfo(e, result)
+	})
+
+	// Visit the search URL
+	err := s.collector.Visit(searchURL)
+	if err != nil {
+		result.Error = fmt.Sprintf("Failed to fetch search results: %v", err)
+		return result, nil
+	}
+	
+	s.collector.Wait()
+
+	// If we found a detailed URL, get detailed information
+	if detailURL != "" {
+		log.Printf("Attempting to get detailed info from: %s", detailURL)
+		err := s.getDetailedInfo(detailURL, result)
+		if err != nil {
+			log.Printf("Warning: Could not fetch detailed info from %s: %v", detailURL, err)
+		} else {
+			log.Printf("Successfully visited detailed page")
+		}
+	} else {
+		log.Printf("No detailed page link found for reference")
+	}
+
+	return result, nil
+}
+
 // getDetailedInfo fetches detailed information from the LaserDisc's dedicated page
 func (s *LDDBScraper) getDetailedInfo(url string, result *models.LookupResult) error {
 	// Extract LDDB ID from URL: /laserdisc/31738/SF098-1117/Star-Wars...

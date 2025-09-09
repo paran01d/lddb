@@ -23,7 +23,9 @@ const elements = {
     inputs: {
         search: document.getElementById('search-input'),
         manualUpc: document.getElementById('manual-upc'),
-        lookupBtn: document.getElementById('lookup-btn')
+        manualReference: document.getElementById('manual-reference'),
+        lookupUpcBtn: document.getElementById('lookup-upc-btn'),
+        lookupRefBtn: document.getElementById('lookup-ref-btn')
     },
     modals: {
         scan: document.getElementById('scan-modal'),
@@ -126,11 +128,19 @@ function initializeEventListeners() {
     elements.buttons.addManual.addEventListener('click', () => openModal('add'));
     elements.buttons.random.addEventListener('click', getRandomMovie);
 
-    // UPC lookup
-    elements.inputs.lookupBtn.addEventListener('click', lookupUPC);
+    // UPC and Reference lookup
+    elements.inputs.lookupUpcBtn.addEventListener('click', lookupUPC);
+    elements.inputs.lookupRefBtn.addEventListener('click', lookupReference);
+    
     elements.inputs.manualUpc.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             lookupUPC();
+        }
+    });
+    
+    elements.inputs.manualReference.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            lookupReference();
         }
     });
 
@@ -287,7 +297,7 @@ async function lookupUPC() {
     }
 
     try {
-        showNotification('Looking up LaserDisc...', 'info');
+        showNotification('Looking up LaserDisc by UPC...', 'info');
         const data = await apiCall(`/lookup/${encodeURIComponent(upc)}`);
 
         if (data.result && data.result.found) {
@@ -298,6 +308,32 @@ async function lookupUPC() {
             showNotification('LaserDisc found! Review and add to collection.', 'success');
         } else {
             showNotification('LaserDisc not found in database', 'warning');
+        }
+    } catch (error) {
+        // Error already handled in apiCall
+    }
+}
+
+// Reference lookup functionality
+async function lookupReference() {
+    const reference = elements.inputs.manualReference.value.trim();
+    if (!reference) {
+        showNotification('Please enter a reference number', 'error');
+        return;
+    }
+
+    try {
+        showNotification('Looking up LaserDisc by reference...', 'info');
+        const data = await apiCall(`/lookup/reference/${encodeURIComponent(reference)}`);
+
+        if (data.result && data.result.found) {
+            // Pre-fill the add form with the lookup data
+            populateAddForm(data.result);
+            closeModals();
+            openModal('add');
+            showNotification('LaserDisc found by reference! Review and add to collection.', 'success');
+        } else {
+            showNotification('LaserDisc reference not found in database', 'warning');
         }
     } catch (error) {
         // Error already handled in apiCall

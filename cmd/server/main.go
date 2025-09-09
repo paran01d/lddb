@@ -75,6 +75,7 @@ func main() {
 
 		// Lookup and random endpoints
 		api.GET("/lookup/:upc", lookupHandler.LookupByUPC)
+		api.GET("/lookup/reference/:reference", lookupHandler.LookupByReference)
 		api.GET("/random-unwatched", collectionHandler.GetRandomUnwatched)
 	}
 

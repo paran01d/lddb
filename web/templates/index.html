@@ -56,9 +56,15 @@
             <span class="close">&times;</span>
             <h2>Scan LaserDisc Barcode</h2>
             <div id="scanner"></div>
-            <p>Or enter UPC manually:</p>
-            <input type="text" id="manual-upc" placeholder="Enter UPC..." />
-            <button id="lookup-btn">Lookup</button>
+            <div class="manual-lookup">
+                <p>Or enter manually:</p>
+                <input type="text" id="manual-upc" placeholder="Enter UPC (e.g., 013023508965)..." />
+                <input type="text" id="manual-reference" placeholder="Enter Reference (e.g., PILF-2650)..." />
+                <div class="lookup-buttons">
+                    <button id="lookup-upc-btn" class="primary-btn">Lookup UPC</button>
+                    <button id="lookup-ref-btn" class="secondary-btn">Lookup Reference</button>
+                </div>
+            </div>
         </div>
     </div>
 
