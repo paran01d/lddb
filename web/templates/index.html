@@ -81,6 +81,34 @@
         </div>
     </div>
 
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit LaserDisc</h2>
+            <form id="edit-form">
+                <div class="form-cover-preview" id="edit-cover-preview" style="display: none;">
+                    <img id="edit-cover-img" alt="Cover preview" />
+                </div>
+                <input type="hidden" id="edit-id" />
+                <input type="text" id="edit-upc" placeholder="UPC" readonly />
+                <input type="text" id="edit-title" placeholder="Title" required />
+                <input type="number" id="edit-year" placeholder="Year" />
+                <input type="text" id="edit-director" placeholder="Director" />
+                <input type="text" id="edit-genre" placeholder="Category" />
+                <input type="text" id="edit-format" placeholder="Format" />
+                <input type="number" id="edit-sides" placeholder="Sides" />
+                <input type="number" id="edit-runtime" placeholder="Runtime (minutes)" />
+                <input type="url" id="edit-cover-url" placeholder="Cover Image URL" />
+                <input type="url" id="edit-lddb-url" placeholder="LDDB URL" readonly />
+                <textarea id="edit-notes" placeholder="Notes"></textarea>
+                <div class="edit-actions">
+                    <button type="submit" class="primary-btn">Save Changes</button>
+                    <button type="button" class="secondary-btn" onclick="closeModals()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- QuaggaJS for barcode scanning -->
     <script src="/static/lib/quagga.min.js"></script>
     

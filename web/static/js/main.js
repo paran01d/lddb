@@ -27,10 +27,12 @@ const elements = {
     },
     modals: {
         scan: document.getElementById('scan-modal'),
-        add: document.getElementById('add-modal')
+        add: document.getElementById('add-modal'),
+        edit: document.getElementById('edit-modal')
     },
     collection: document.getElementById('collection'),
-    addForm: document.getElementById('add-form')
+    addForm: document.getElementById('add-form'),
+    editForm: document.getElementById('edit-form')
 };
 
 // Initialize the application
@@ -134,6 +136,9 @@ function initializeEventListeners() {
 
     // Add form submission
     elements.addForm.addEventListener('submit', handleAddLaserDisc);
+    
+    // Edit form submission
+    elements.editForm.addEventListener('submit', handleEditLaserDisc);
 
     // Close modals when clicking outside or on close button
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -511,12 +516,100 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Edit LaserDisc functionality
+async function editLaserDisc(id) {
+    try {
+        // Get the LaserDisc data
+        const laserdisc = collection.find(ld => ld.id === id);
+        if (!laserdisc) {
+            showNotification('LaserDisc not found', 'error');
+            return;
+        }
+        
+        // Populate edit form
+        document.getElementById('edit-id').value = laserdisc.id;
+        document.getElementById('edit-upc').value = laserdisc.upc;
+        document.getElementById('edit-title').value = laserdisc.title;
+        document.getElementById('edit-year').value = laserdisc.year || '';
+        document.getElementById('edit-director').value = laserdisc.director || '';
+        document.getElementById('edit-genre').value = laserdisc.genre || '';
+        document.getElementById('edit-format').value = laserdisc.format || '';
+        document.getElementById('edit-sides').value = laserdisc.sides || '';
+        document.getElementById('edit-runtime').value = laserdisc.runtime || '';
+        document.getElementById('edit-cover-url').value = laserdisc.cover_image_url || '';
+        document.getElementById('edit-lddb-url').value = laserdisc.lddb_url || '';
+        document.getElementById('edit-notes').value = laserdisc.notes || '';
+        
+        // Show cover image preview if available
+        if (laserdisc.cover_image_url && !laserdisc.cover_image_url.includes('loading.gif')) {
+            showEditCoverPreview(laserdisc.cover_image_url);
+        }
+        
+        // Open edit modal
+        openModal('edit');
+        
+    } catch (error) {
+        showNotification('Failed to open edit form', 'error');
+    }
+}
+
+// Handle edit form submission
+async function handleEditLaserDisc(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('edit-id').value;
+    const updateData = {
+        title: document.getElementById('edit-title').value || null,
+        year: parseInt(document.getElementById('edit-year').value) || null,
+        director: document.getElementById('edit-director').value || null,
+        genre: document.getElementById('edit-genre').value || null,
+        format: document.getElementById('edit-format').value || null,
+        sides: parseInt(document.getElementById('edit-sides').value) || null,
+        runtime: parseInt(document.getElementById('edit-runtime').value) || null,
+        cover_image_url: document.getElementById('edit-cover-url').value || null,
+        lddb_url: document.getElementById('edit-lddb-url').value || null,
+        notes: document.getElementById('edit-notes').value || null
+    };
+    
+    // Remove null values (don't update fields that are empty)
+    Object.keys(updateData).forEach(key => {
+        if (updateData[key] === null || updateData[key] === '') {
+            delete updateData[key];
+        }
+    });
+
+    try {
+        await apiCall(`/collection/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(updateData)
+        });
+
+        showNotification('LaserDisc updated successfully!', 'success');
+        closeModals();
+        loadCollection(currentSearch, currentOffset); // Refresh collection
+    } catch (error) {
+        // Error already handled in apiCall
+    }
+}
+
+// Show cover image preview in edit form
+function showEditCoverPreview(url) {
+    const preview = document.getElementById('edit-cover-preview');
+    const img = document.getElementById('edit-cover-img');
+    
+    if (preview && img && url) {
+        img.src = url;
+        preview.style.display = 'block';
+        
+        img.onerror = function() {
+            preview.style.display = 'none';
+        };
+    }
+}
+
 // Global functions for inline event handlers
 window.toggleWatched = toggleWatched;
 window.deleteLaserDisc = deleteLaserDisc;
-window.editLaserDisc = function(id) {
-    // TODO: Implement edit functionality
-    showNotification('Edit functionality coming soon!', 'info');
-};
+window.editLaserDisc = editLaserDisc;
 window.markAsWatched = markAsWatched;
 window.closeModals = closeModals;

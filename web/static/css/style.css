@@ -265,12 +265,14 @@ header p {
 
 .modal-content {
     background-color: white;
-    margin: 10% auto;
+    margin: 5% auto;
     padding: 30px;
     border-radius: 10px;
     width: 90%;
     max-width: 500px;
+    max-height: 90vh;
     position: relative;
+    overflow-y: auto;
 }
 
 .close {
@@ -331,6 +333,48 @@ header p {
     max-height: 150px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Edit form specific styles */
+.edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.edit-actions button {
+    flex: 1;
+}
+
+/* Make form inputs more compact in modals */
+.modal input,
+.modal textarea {
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.modal form {
+    gap: 12px;
+}
+
+/* Ensure edit modal content is scrollable */
+#edit-modal .modal-content {
+    max-height: 85vh;
+}
+
+/* Responsive modal adjustments */
+@media (max-height: 700px) {
+    .modal-content {
+        margin: 2% auto;
+        max-height: 95vh;
+        padding: 20px;
+    }
+    
+    .modal input,
+    .modal textarea {
+        padding: 8px;
+        margin-bottom: 10px;
+    }
 }
 
 #scanner {
