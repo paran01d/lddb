@@ -19,6 +19,11 @@ COPY . .
 # Tidy up the module dependencies
 RUN go mod tidy
 
+# Generate build timestamp for cache busting
+RUN BUILD_TIME=$(date +%Y%m%d%H%M%S) && \
+    echo "Build timestamp: $BUILD_TIME" && \
+    sed -i "s/BUILD_TIMESTAMP/$BUILD_TIME/g" web/templates/index.html
+
 # Build the application
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
 

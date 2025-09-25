@@ -47,42 +47,18 @@ func (h *CollectionHandler) GetCollection(c *gin.Context) {
 	var total int64
 
 	if search != "" {
-		// Search with query
-		laserdiscs, err = h.dbService.SearchLaserDiscs(search)
+		// Search with proper SQL pagination
+		laserdiscs, total, err = h.dbService.SearchLaserDiscsWithPagination(search, limit, offset)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search collection"})
 			return
 		}
-		total = int64(len(laserdiscs))
-		
-		// Apply pagination to search results
-		if offset >= len(laserdiscs) {
-			laserdiscs = []models.LaserDisc{}
-		} else {
-			end := offset + limit
-			if end > len(laserdiscs) {
-				end = len(laserdiscs)
-			}
-			laserdiscs = laserdiscs[offset:end]
-		}
 	} else {
-		// Get all with pagination
-		laserdiscs, err = h.dbService.GetAllLaserDiscs()
+		// Get all with proper SQL pagination
+		laserdiscs, total, err = h.dbService.GetLaserDiscsWithPagination(limit, offset)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve collection"})
 			return
-		}
-		total = int64(len(laserdiscs))
-
-		// Apply pagination
-		if offset >= len(laserdiscs) {
-			laserdiscs = []models.LaserDisc{}
-		} else {
-			end := offset + limit
-			if end > len(laserdiscs) {
-				end = len(laserdiscs)
-			}
-			laserdiscs = laserdiscs[offset:end]
 		}
 	}
 

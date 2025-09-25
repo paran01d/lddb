@@ -176,16 +176,53 @@ func (s *Service) GetRandomUnwatched() (*models.LaserDisc, error) {
 	return &unwatched[randomIndex], nil
 }
 
-// SearchLaserDiscs searches for LaserDiscs by title, director, or genre
+// GetLaserDiscsWithPagination retrieves LaserDiscs with proper SQL pagination
+func (s *Service) GetLaserDiscsWithPagination(limit, offset int) ([]models.LaserDisc, int64, error) {
+	var laserdiscs []models.LaserDisc
+	var total int64
+
+	// Get total count
+	if err := s.db.Model(&models.LaserDisc{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	result := s.db.Order("title ASC").Limit(limit).Offset(offset).Find(&laserdiscs)
+	return laserdiscs, total, result.Error
+}
+
+// SearchLaserDiscsWithPagination searches LaserDiscs with proper SQL pagination
+func (s *Service) SearchLaserDiscsWithPagination(query string, limit, offset int) ([]models.LaserDisc, int64, error) {
+	var laserdiscs []models.LaserDisc
+	var total int64
+	searchPattern := "%" + query + "%"
+
+	// Build the query
+	dbQuery := s.db.Where(
+		"title LIKE ? OR director LIKE ? OR genre LIKE ?",
+		searchPattern, searchPattern, searchPattern,
+	)
+
+	// Get total count
+	if err := dbQuery.Model(&models.LaserDisc{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	result := dbQuery.Order("title ASC").Limit(limit).Offset(offset).Find(&laserdiscs)
+	return laserdiscs, total, result.Error
+}
+
+// SearchLaserDiscs searches for LaserDiscs by title, director, or genre (legacy method)
 func (s *Service) SearchLaserDiscs(query string) ([]models.LaserDisc, error) {
 	var laserdiscs []models.LaserDisc
 	searchPattern := "%" + query + "%"
-	
+
 	result := s.db.Where(
 		"title LIKE ? OR director LIKE ? OR genre LIKE ?",
 		searchPattern, searchPattern, searchPattern,
 	).Order("title ASC").Find(&laserdiscs)
-	
+
 	return laserdiscs, result.Error
 }
 

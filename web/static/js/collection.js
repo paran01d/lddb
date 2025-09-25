@@ -8,6 +8,10 @@ class CollectionManager {
         this.sortBy = 'title';
         this.sortOrder = 'asc';
         this.filterWatched = 'all'; // all, watched, unwatched
+        this.isLoading = false;
+        this.hasMoreData = true;
+        this.allLoadedData = []; // Store all loaded items for client-side filtering
+        this.setupInfiniteScroll();
     }
 
     // Load collection with advanced filtering and sorting
@@ -18,12 +22,21 @@ class CollectionManager {
             limit = this.itemsPerPage,
             sortBy = this.sortBy,
             sortOrder = this.sortOrder,
-            filterWatched = this.filterWatched
+            filterWatched = this.filterWatched,
+            append = false // For infinite scroll
         } = options;
 
+        if (this.isLoading) return;
+        this.isLoading = true;
+
         try {
-            showLoading();
-            
+            if (!append) {
+                showLoading();
+                this.allLoadedData = [];
+                this.hasMoreData = true;
+                this.currentPage = 0;
+            }
+
             const params = new URLSearchParams({
                 limit: limit,
                 offset: offset
@@ -34,20 +47,33 @@ class CollectionManager {
             }
 
             const data = await apiCall(`/collection?${params}`);
-            let laserdiscs = data.laserdiscs || [];
-            
+            const newLaserdiscs = data.laserdiscs || [];
+
+            // Check if we have more data
+            this.hasMoreData = newLaserdiscs.length === limit && data.pagination.total > (offset + limit);
+
+            // Store all loaded data for client-side operations
+            if (append) {
+                this.allLoadedData = [...this.allLoadedData, ...newLaserdiscs];
+            } else {
+                this.allLoadedData = newLaserdiscs;
+            }
+
+            // Apply client-side filtering and sorting
+            let filteredData = [...this.allLoadedData];
+
             // Client-side filtering for watched status
             if (filterWatched === 'watched') {
-                laserdiscs = laserdiscs.filter(ld => ld.watched);
+                filteredData = filteredData.filter(ld => ld.watched);
             } else if (filterWatched === 'unwatched') {
-                laserdiscs = laserdiscs.filter(ld => !ld.watched);
+                filteredData = filteredData.filter(ld => !ld.watched);
             }
 
             // Client-side sorting
-            laserdiscs.sort((a, b) => {
+            filteredData.sort((a, b) => {
                 let aVal = a[sortBy] || '';
                 let bVal = b[sortBy] || '';
-                
+
                 if (typeof aVal === 'string') {
                     aVal = aVal.toLowerCase();
                     bVal = bVal.toLowerCase();
@@ -60,21 +86,33 @@ class CollectionManager {
                 }
             });
 
-            collection = laserdiscs;
+            collection = filteredData;
             currentOffset = offset;
 
             updateStats(data.stats);
-            this.renderCollection();
+            this.renderCollection(append);
             this.updatePagination(data.pagination);
-            
+
+            // Ensure load more button is created/updated after data is loaded
+            if (!append) {
+                this.ensureLoadMoreButton();
+            } else {
+                this.updateLoadMoreButton();
+            }
+
         } catch (error) {
-            elements.collection.innerHTML = '<p class="error">Failed to load collection. Please try again.</p>';
+            if (!append) {
+                elements.collection.innerHTML = '<p class="error">Failed to load collection. Please try again.</p>';
+            }
+        } finally {
+            this.isLoading = false;
+            hideLoading();
         }
     }
 
     // Enhanced collection rendering with advanced features
-    renderCollection() {
-        if (collection.length === 0) {
+    renderCollection(append = false) {
+        if (collection.length === 0 && !append) {
             elements.collection.innerHTML = `
                 <div class="empty-state">
                     <h3>📀 No LaserDiscs found</h3>
@@ -85,21 +123,50 @@ class CollectionManager {
             return;
         }
 
-        // Create collection controls
-        const controls = this.createCollectionControls();
-        
-        // Create grid
-        const grid = document.createElement('div');
-        grid.className = 'laserdisc-grid';
+        if (!append) {
+            // Create collection controls
+            const controls = this.createCollectionControls();
 
-        collection.forEach(laserdisc => {
-            const card = this.createEnhancedLaserDiscCard(laserdisc);
-            grid.appendChild(card);
-        });
+            // Create grid
+            const grid = document.createElement('div');
+            grid.className = 'laserdisc-grid';
+            grid.id = 'laserdisc-grid';
 
-        elements.collection.innerHTML = '';
-        elements.collection.appendChild(controls);
-        elements.collection.appendChild(grid);
+            collection.forEach(laserdisc => {
+                const card = this.createEnhancedLaserDiscCard(laserdisc);
+                grid.appendChild(card);
+            });
+
+            elements.collection.innerHTML = '';
+            elements.collection.appendChild(controls);
+            elements.collection.appendChild(grid);
+
+            // Add loading indicator for infinite scroll
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.id = 'infinite-scroll-loading';
+            loadingIndicator.className = 'infinite-scroll-loading hidden';
+            loadingIndicator.innerHTML = '<div class="spinner"></div><p>Loading more LaserDiscs...</p>';
+            elements.collection.appendChild(loadingIndicator);
+        } else {
+            // Append new items to existing grid
+            const grid = document.getElementById('laserdisc-grid');
+            if (grid) {
+                // Calculate which items to append (newly loaded ones)
+                const startIndex = this.allLoadedData.length - this.itemsPerPage;
+                const newItems = collection.slice(Math.max(0, collection.length - this.itemsPerPage));
+
+                newItems.forEach(laserdisc => {
+                    // Check if card already exists to avoid duplicates
+                    if (!grid.querySelector(`[data-id="${laserdisc.id}"]`)) {
+                        const card = this.createEnhancedLaserDiscCard(laserdisc);
+                        grid.appendChild(card);
+                    }
+                });
+            }
+
+            // Update load more button
+            this.updateLoadMoreButton();
+        }
     }
 
     // Create collection controls (sort, filter, view options)
@@ -208,6 +275,116 @@ class CollectionManager {
         `;
 
         return card;
+    }
+
+    // Setup infinite scroll
+    setupInfiniteScroll() {
+        const throttle = (func, delay) => {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        };
+
+        const handleScroll = throttle(() => {
+            if (this.isLoading || !this.hasMoreData) return;
+
+            const scrollPosition = window.scrollY + window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            const threshold = 200; // Load more when 200px from bottom
+
+            if (scrollPosition >= documentHeight - threshold) {
+                this.loadMore();
+            }
+        }, 100);
+
+        window.addEventListener('scroll', handleScroll);
+    }
+
+    // Load more items for infinite scroll
+    async loadMore() {
+        if (this.isLoading || !this.hasMoreData) return;
+
+        this.currentPage++;
+        const offset = this.currentPage * this.itemsPerPage;
+
+        // Show loading indicator
+        const loadingIndicator = document.getElementById('infinite-scroll-loading');
+        if (loadingIndicator) {
+            loadingIndicator.classList.remove('hidden');
+        }
+
+        await this.loadCollection({
+            search: currentSearch,
+            offset: offset,
+            append: true
+        });
+
+        // Hide loading indicator
+        if (loadingIndicator) {
+            loadingIndicator.classList.add('hidden');
+        }
+
+        // Update load more button visibility
+        this.updateLoadMoreButton();
+    }
+
+    // Manual load more for mobile/button click
+    async loadMoreManually() {
+        if (this.isLoading || !this.hasMoreData) return;
+
+        // Disable button during loading
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = 'Loading...';
+        }
+
+        await this.loadMore();
+
+        // Re-enable button
+        if (loadMoreBtn && this.hasMoreData) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.textContent = 'Load More LaserDiscs';
+        }
+    }
+
+    // Ensure load more button exists
+    ensureLoadMoreButton() {
+        // Remove existing button if present
+        const existingContainer = document.getElementById('load-more-container');
+        if (existingContainer) {
+            existingContainer.remove();
+        }
+
+        // Always create the button
+        const loadMoreContainer = document.createElement('div');
+        loadMoreContainer.id = 'load-more-container';
+        loadMoreContainer.className = 'load-more-container';
+        loadMoreContainer.innerHTML = `
+            <button id="load-more-btn" class="load-more-btn" onclick="collectionManager.loadMoreManually()">
+                Load More LaserDiscs
+            </button>
+        `;
+
+        // Add to collection
+        elements.collection.appendChild(loadMoreContainer);
+
+        // Set visibility based on hasMoreData
+        this.updateLoadMoreButton();
+    }
+
+    // Update load more button visibility and state
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            if (this.hasMoreData) {
+                loadMoreContainer.style.display = 'block';
+            } else {
+                loadMoreContainer.style.display = 'none';
+            }
+        }
     }
 
     // Update filter

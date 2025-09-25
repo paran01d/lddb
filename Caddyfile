@@ -4,13 +4,31 @@
 # Production HTTPS configuration for cooee.mankies.com
 cooee.mankies.com {
     reverse_proxy lddb:8080
-    
+
     # Automatic HTTPS with Let's Encrypt
     tls paran01d@gmail.com
-    
+
     # Enable compression
     encode gzip
-    
+
+    # Cache busting for static assets (JS/CSS) - no cache
+    @static_assets {
+        path *.js *.css
+    }
+    header @static_assets {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        Pragma "no-cache"
+        Expires "0"
+    }
+
+    # Cache images and other assets
+    @images {
+        path *.png *.jpg *.jpeg *.gif *.ico *.svg *.webp
+    }
+    header @images {
+        Cache-Control "public, max-age=86400"
+    }
+
     # Security headers for HTTPS
     header {
         # Enable HSTS
@@ -45,6 +63,24 @@ http://cooee.mankies.com {
 :8090 {
     reverse_proxy lddb:8080
     encode gzip
+
+    # Cache busting for static assets (JS/CSS) in development too
+    @static_assets {
+        path *.js *.css
+    }
+    header @static_assets {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        Pragma "no-cache"
+        Expires "0"
+    }
+
+    # Cache images
+    @images {
+        path *.png *.jpg *.jpeg *.gif *.ico *.svg *.webp
+    }
+    header @images {
+        Cache-Control "public, max-age=86400"
+    }
 }
 
 # For production with domain (uncomment and configure with your domain)
