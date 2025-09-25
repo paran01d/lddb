@@ -58,11 +58,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Add mobile debug console
 function addMobileDebugConsole() {
-    // Only add on mobile or when URL contains debug=1
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Only add when URL contains debug=1
     const debugMode = window.location.search.includes('debug=1');
-    
-    if (isMobile || debugMode) {
+
+    if (debugMode) {
         const debugConsole = document.createElement('div');
         debugConsole.id = 'mobile-console';
         debugConsole.innerHTML = `
