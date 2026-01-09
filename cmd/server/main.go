@@ -76,25 +76,32 @@ func main() {
 			"title": "LaserDisc Collection Manager",
 		})
 	})
-	
+
+	// Public collection page (read-only, no auth required)
+	router.GET("/public", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "public.html", gin.H{
+			"title": "LaserDisc Collection",
+		})
+	})
+
 	// Token authentication page
 	router.GET("/auth", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "auth.html", gin.H{
 			"title": "Access Required - LaserDisc Collection Manager",
 		})
 	})
-	
+
 	// Token validation endpoint
 	router.POST("/auth/validate", func(c *gin.Context) {
 		var req struct {
 			Token string `json:"token" binding:"required"`
 		}
-		
+
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 			return
 		}
-		
+
 		token := strings.TrimSpace(strings.ToUpper(req.Token))
 		if token == accessToken {
 			c.JSON(http.StatusOK, gin.H{
@@ -105,6 +112,13 @@ func main() {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid access token"})
 		}
 	})
+
+	// Public API routes (no authentication required)
+	publicAPI := router.Group("/api/public")
+	{
+		// Read-only collection endpoint
+		publicAPI.GET("/collection", collectionHandler.GetCollection)
+	}
 
 	// API routes
 	api := router.Group("/api")
@@ -182,23 +196,28 @@ func randomInt(max int) int {
 // authMiddleware checks for valid access token
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Skip auth for token entry page, validation endpoint, main page, and static files
+		// Skip auth for token entry page, validation endpoint, main page, public routes, and static files
 		// Main page will handle auth client-side via JavaScript
 		path := c.Request.URL.Path
-		if path == "/auth" || path == "/auth/validate" || path == "/" || strings.HasPrefix(path, "/static/") {
+		if path == "/auth" ||
+		   path == "/auth/validate" ||
+		   path == "/" ||
+		   path == "/public" ||
+		   strings.HasPrefix(path, "/static/") ||
+		   strings.HasPrefix(path, "/api/public/") {
 			c.Next()
 			return
 		}
-		
+
 		// Check for token in header or query parameter
 		token := c.GetHeader("Authorization")
 		if token == "" {
 			token = c.Query("token")
 		}
-		
+
 		// Remove "Bearer " prefix if present
 		token = strings.TrimPrefix(token, "Bearer ")
-		
+
 		if token != accessToken {
 			// Redirect to token entry page
 			if c.GetHeader("Accept") == "application/json" || strings.HasPrefix(path, "/api/") {
@@ -209,7 +228,7 @@ func authMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }

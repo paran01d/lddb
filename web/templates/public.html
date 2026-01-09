@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}} - Public Collection</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="shortcut icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/favicon.svg">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="/static/css/style.css?v=BUILD_TIMESTAMP">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📀 LaserDisc Collection</h1>
+            <p>Browse the complete LaserDisc collection</p>
+        </header>
+
+        <main>
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <h3>Total</h3>
+                    <span id="total-count">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Watched</h3>
+                    <span id="watched-count">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Unwatched</h3>
+                    <span id="unwatched-count">0</span>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search collection..." />
+                <button id="search-btn">🔍</button>
+            </div>
+
+            <div class="filter-controls">
+                <label for="filter-select">Filter:</label>
+                <select id="filter-select">
+                    <option value="all">All</option>
+                    <option value="watched">Watched</option>
+                    <option value="unwatched">Unwatched</option>
+                </select>
+
+                <label for="sort-select">Sort by:</label>
+                <select id="sort-select">
+                    <option value="title">Title</option>
+                    <option value="year">Year</option>
+                    <option value="director">Director</option>
+                    <option value="added">Date Added</option>
+                </select>
+
+                <label for="view-toggle">View:</label>
+                <button id="view-toggle" class="secondary-btn">Grid</button>
+            </div>
+
+            <div class="collection" id="collection">
+                <p class="loading">Loading collection...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="/static/js/public.js?v=BUILD_TIMESTAMP"></script>
+</body>
+</html>
